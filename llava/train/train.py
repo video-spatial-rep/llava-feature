@@ -1235,6 +1235,8 @@ class LazySupervisedDataset(Dataset):
             data_dict["prompt"] = prompt
 
         data_dict["id"] = self.list_data_dict[i].get("id", i)
+        data_dict["video_path"] = self.list_data_dict[i]["video"]
+
 
         return data_dict
 
@@ -1282,6 +1284,17 @@ class DataCollatorForSupervisedDataset(object):
 
         if "prompt" in instances[0]:
             batch["prompts"] = [instance["prompt"] for instance in instances]
+            
+            # batch video_path and id here
+            
+        if "id" in instances[0]:
+            batch["ids"] = [instance["id"] for instance in instances]
+
+        # In your collator:
+        if "video_path" in instances[0]:
+            # Instead of batching into a list, choose the first one or merge appropriately.
+            batch["video_path"] = instances[0]["video_path"]
+
 
         return batch
 

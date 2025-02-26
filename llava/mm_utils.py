@@ -365,6 +365,11 @@ def get_model_name_from_path(model_path):
     model_paths = model_path.split("/")
     if model_paths[-1].startswith("checkpoint-"):
         return model_paths[-2] + "_" + model_paths[-1]
+
+    # ADDED AS A SANITY CHECK
+    elif model_paths[-1].startswith("ft-llava-video"):
+        return "LLaVA-Video-7B-Qwen2"
+
     else:
         return model_paths[-1]
 

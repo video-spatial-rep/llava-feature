@@ -11,18 +11,34 @@ import torch
 import sys
 import warnings
 
+# import logging
+# logging.basicConfig(level=logging.DEBUG)
+
 warnings.filterwarnings("ignore")
 
-pretrained = "lmms-lab/llava-onevision-qwen2-0.5b-si"
+# pretrained = "lmms-lab/llava-onevision-qwen2-0.5b-ov"
+pretrained = "/nas/spatial/checkpoints/20250216_165055-ft-llava-onevision-google_siglip-so400m-patch14-384-Qwen_Qwen2-7B-Instruct-32F_4bs_4ga"
 model_name = "llava_qwen"
 device = "cuda"
 device_map = "auto"
-tokenizer, model, image_processor, max_length = load_pretrained_model(pretrained, None, model_name, device_map=device_map)  # Add any other thing you want to pass in llava_model_args
+tokenizer, model, image_processor, max_length = load_pretrained_model(
+    pretrained, 
+    None, 
+    model_name, 
+    device_map=device_map
+)
 
 model.eval()
 
-url = "https://github.com/haotian-liu/LLaVA/blob/1a91fc274d7c35a9b50b3cb29c4247ae5837ce39/images/llava_v1_5_radar.jpg?raw=true"
-image = Image.open(requests.get(url, stream=True).raw)
+print("Tokenizer vocab size:", len(tokenizer))
+print("Model config vocab size:", model.config.vocab_size)
+print("lm_head weight shape:", model.lm_head.weight.shape)
+
+url = "/home/anjali/thinking-in-space/LLaVA-NeXT/docs/ov_chat_images/example1_tree.png"
+image = Image.open(url)
+
+# url = "https://github.com/haotian-liu/LLaVA/blob/1a91fc274d7c35a9b50b3cb29c4247ae5837ce39/images/llava_v1_5_radar.jpg?raw=true"
+# image = Image.open(requests.get(url, stream=True).raw)
 image_tensor = process_images([image], image_processor, model.config)
 image_tensor = [_image.to(dtype=torch.float16, device=device) for _image in image_tensor]
 
@@ -36,6 +52,9 @@ prompt_question = conv.get_prompt()
 input_ids = tokenizer_image_token(prompt_question, tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).to(device)
 image_sizes = [image.size]
 
+# decoded_input = tokenizer.decode(input_ids[0], skip_special_tokens=False)
+# print("Decoded input tokens:", decoded_input)
+
 
 cont = model.generate(
     input_ids,
@@ -43,7 +62,7 @@ cont = model.generate(
     image_sizes=image_sizes,
     do_sample=False,
     temperature=0,
-    max_new_tokens=4096,
+    max_new_tokens=64,
 )
 text_outputs = tokenizer.batch_decode(cont, skip_special_tokens=True)
 print(text_outputs)
@@ -52,8 +71,11 @@ from threading import Thread
 from transformers import TextIteratorStreamer
 import json
 
-url = "https://github.com/haotian-liu/LLaVA/blob/1a91fc274d7c35a9b50b3cb29c4247ae5837ce39/images/llava_v1_5_radar.jpg?raw=true"
-image = Image.open(requests.get(url, stream=True).raw)
+url = "/home/anjali/thinking-in-space/LLaVA-NeXT/docs/ov_chat_images/example1_tree.png"
+image = Image.open(url)
+
+# url = "https://github.com/haotian-liu/LLaVA/blob/1a91fc274d7c35a9b50b3cb29c4247ae5837ce39/images/llava_v1_5_radar.jpg?raw=true"
+# image = Image.open(requests.get(url, stream=True).raw)
 image_tensor = process_images([image], image_processor, model.config)
 image_tensor = [_image.to(dtype=torch.float16, device=device) for _image in image_tensor]
 
@@ -72,7 +94,7 @@ num_image_tokens = question.count(DEFAULT_IMAGE_TOKEN) * model.get_vision_tower(
 
 streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True, timeout=15)
 
-max_new_tokens = min(4096, max_context_length - input_ids.shape[-1] - num_image_tokens)
+max_new_tokens = min(64, max_context_length - input_ids.shape[-1] - num_image_tokens)
 
 if max_new_tokens < 1:
     print(

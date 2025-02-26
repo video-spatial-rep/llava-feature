@@ -204,7 +204,13 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
                 model = LlavaLlamaForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, attn_implementation=attn_implementation, config=llava_cfg, **kwargs)
 
             elif "qwen" in model_name.lower() or "quyen" in model_name.lower():
-                tokenizer = AutoTokenizer.from_pretrained(model_path)
+                # CHECK IF THE MODEL IS A FINE-TUNED LLAVA-VIDEO MODEL
+                pretrained_model_name_or_path = model_path.strip("/").split("/")[-1]
+                if pretrained_model_name_or_path.startswith("ft-llava-video"):
+                    tokenizer = AutoTokenizer.from_pretrained("lmms-lab/LLaVA-Video-7B-Qwen2")
+                else:
+                    tokenizer = AutoTokenizer.from_pretrained(model_path)
+                    
                 if "moe" in model_name.lower() or "A14B" in model_name.lower():
                     from llava.model.language_model.llava_qwen_moe import LlavaQwenMoeConfig
                     if overwrite_config is not None:

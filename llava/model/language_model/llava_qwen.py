@@ -23,6 +23,7 @@ from transformers import AutoConfig, AutoModelForCausalLM, LlamaConfig, LlamaMod
 
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.generation.utils import GenerateOutput
+from typing import Optional
 
 # from ...constants import IGNORE_INDEX, IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 from llava.model.llava_arch import LlavaMetaModel, LlavaMetaForCausalLM
@@ -47,6 +48,8 @@ class LlavaQwenForCausalLM(Qwen2ForCausalLM, LlavaMetaForCausalLM):
     config_class = LlavaQwenConfig
 
     def __init__(self, config):
+        # dummy qwen 
+        config.num_hidden_layers = 1
         # super(Qwen2ForCausalLM, self).__init__(config)
         Qwen2ForCausalLM.__init__(self, config)
         config.model_type = "llava_qwen"
@@ -77,11 +80,30 @@ class LlavaQwenForCausalLM(Qwen2ForCausalLM, LlavaMetaForCausalLM):
         modalities: Optional[List[str]] = ["image"],
         dpo_forward: Optional[bool] = False,
         cache_position=None,
+        # now a single video_path
+        ids: Optional[str] = None,
+        video_path: Optional[str] = None,
     ) -> Union[Tuple, CausalLMOutputWithPast]:
-
+        print(video_path)
         if inputs_embeds is None:
-            (input_ids, position_ids, attention_mask, past_key_values, inputs_embeds, labels) = self.prepare_inputs_labels_for_multimodal(input_ids, position_ids, attention_mask, past_key_values, labels, images, modalities, image_sizes)
-
+            (
+                input_ids,
+                position_ids,
+                attention_mask,
+                past_key_values,
+                inputs_embeds,
+                labels,
+            ) = self.prepare_inputs_labels_for_multimodal(
+                input_ids,
+                position_ids,
+                attention_mask,
+                past_key_values,
+                labels,
+                images,
+                modalities,
+                image_sizes,
+                video_path=video_path
+        )
         if dpo_forward:
             outputs = self.model(
                 input_ids=input_ids,
@@ -100,7 +122,7 @@ class LlavaQwenForCausalLM(Qwen2ForCausalLM, LlavaMetaForCausalLM):
             return logits, labels
 
         else:
-            return super().forward(
+            outputs = super().forward(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
                 position_ids=position_ids,
@@ -112,6 +134,7 @@ class LlavaQwenForCausalLM(Qwen2ForCausalLM, LlavaMetaForCausalLM):
                 output_hidden_states=output_hidden_states,
                 return_dict=return_dict,
             )
+            return outputs
 
     @torch.no_grad()
     def generate(
